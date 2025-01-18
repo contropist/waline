@@ -1,8 +1,5 @@
-const fs = require('fs');
-const util = require('util');
-const BaseRest = require('./rest');
+const BaseRest = require('./rest.js');
 
-const readFileAsync = util.promisify(fs.readFile);
 module.exports = class extends BaseRest {
   async getAction() {
     const exportData = {
@@ -17,13 +14,11 @@ module.exports = class extends BaseRest {
       },
     };
 
-    for (let i = 0; i < exportData.tables.length; i++) {
-      const tableName = exportData.tables[i];
-      const model = this.service(
-        `storage/${this.config('storage')}`,
-        tableName
-      );
+    for (const tableName of exportData.tables) {
+      const model = this.getModel(tableName);
+
       const data = await model.select({});
+
       exportData.data[tableName] = data;
     }
 
@@ -31,31 +26,54 @@ module.exports = class extends BaseRest {
   }
 
   async postAction() {
-    const file = this.file('file');
-    try {
-      const jsonText = await readFileAsync(file.path, 'utf-8');
-      const importData = JSON.parse(jsonText);
-      if (!importData || importData.type !== 'waline') {
-        return this.fail('import data format not support!');
-      }
+    const { table } = this.get();
+    const item = this.post();
+    const storage = this.config('storage');
+    const model = this.getModel(table);
 
-      for (let i = 0; i < importData.tables.length; i++) {
-        const tableName = importData.tables[i];
-        const model = this.model(tableName);
-
-        // delete all data at first
-        await model.delete({});
-        // then add data one by one
-        for (let j = 0; j < importData.data[tableName].length; j++) {
-          await model.add(importData.data[tableName][j]);
-        }
-      }
-      return this.success();
-    } catch (e) {
-      if (think.isPrevent(e)) {
-        return this.success();
-      }
-      return this.fail(e.message);
+    if (storage === 'leancloud' || storage === 'mysql') {
+      if (item.insertedAt) item.insertedAt = new Date(item.insertedAt);
+      if (item.createdAt) item.createdAt = new Date(item.createdAt);
+      if (item.updatedAt) item.updatedAt = new Date(item.updatedAt);
     }
+
+    if (storage === 'mysql') {
+      if (item.insertedAt)
+        item.insertedAt = think.datetime(
+          item.insertedAt,
+          'YYYY-MM-DD HH:mm:ss',
+        );
+      if (item.createdAt)
+        item.createdAt = think.datetime(item.createdAt, 'YYYY-MM-DD HH:mm:ss');
+      if (item.updatedAt)
+        item.updatedAt = think.datetime(item.updatedAt, 'YYYY-MM-DD HH:mm:ss');
+    }
+
+    delete item.objectId;
+    const resp = await model.add(item);
+
+    return this.success(resp);
+  }
+
+  async putAction() {
+    const { table, objectId } = this.get();
+    const data = this.post();
+    const model = this.getModel(table);
+
+    delete data.objectId;
+    delete data.createdAt;
+    delete data.updatedAt;
+    await model.update(data, { objectId });
+
+    return this.success();
+  }
+
+  async deleteAction() {
+    const { table } = this.get();
+    const model = this.getModel(table);
+
+    await model.delete({});
+
+    return this.success();
   }
 };
