@@ -1,27 +1,14 @@
-import { readonly, ref } from 'vue';
-import { getUserInfo } from '../utils';
-
+import { useStorage } from '@vueuse/core';
+import type { UserInfo } from '@waline/api';
 import type { Ref } from 'vue';
-import type { UserInfo } from '../utils';
+
+export const USER_KEY = 'WALINE_USER';
 
 export type UserInfoRef = Ref<UserInfo | Record<string, never>>;
 
-const userInfo: UserInfoRef = ref({});
+const userInfoStorage = useStorage<UserInfo | Record<string, never>>(
+  USER_KEY,
+  {},
+);
 
-export const useUserInfo = (): {
-  userInfo: UserInfoRef;
-  setUserInfo: (userInfo: UserInfo | Record<string, never>) => void;
-} => {
-  if (!userInfo.value.token) {
-    const info = getUserInfo();
-
-    if (info) userInfo.value = info;
-  }
-
-  return {
-    userInfo: readonly(userInfo),
-    setUserInfo: (info: UserInfo | Record<string, never>): void => {
-      userInfo.value = info;
-    },
-  };
-};
+export const useUserInfo = (): UserInfoRef => userInfoStorage;
