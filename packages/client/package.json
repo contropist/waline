@@ -1,6 +1,6 @@
 {
   "name": "@waline/client",
-  "version": "2.0.1",
+  "version": "3.5.5",
   "description": "client for waline comment system",
   "keywords": [
     "valine",
@@ -9,38 +9,67 @@
     "blog"
   ],
   "repository": {
-    "url": "https://github.com/walinejs/waline"
+    "url": "https://github.com/walinejs/waline",
+    "directory": "packages/client"
   },
   "license": "MIT",
+  "author": {
+    "name": "Mr.Hope",
+    "email": "mister-hope@outlook.com",
+    "url": "https://mister-hope.com"
+  },
+  "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/shim.esm.js",
-      "require": "./dist/shim.js",
-      "default": "./dist/shim.js"
+      "types": "./dist/slim.d.ts",
+      "default": "./dist/slim.js"
     },
-    "./dist": "./dist/shim.js",
-    "./dist/waline.css": "./dist/waline.css",
-    "./dist/*": "./dist/*.js",
+    "./component": {
+      "types": "./dist/component.d.ts",
+      "default": "./dist/component.js"
+    },
+    "./full": {
+      "types": "./dist/waline.d.ts",
+      "import": "./dist/waline.js",
+      "default": "./dist/waline.umd.js"
+    },
+    "./comment": {
+      "types": "./dist/comment.d.ts",
+      "import": "./dist/comment.js",
+      "default": "./dist/comment.umd.js"
+    },
+    "./pageview": {
+      "types": "./dist/pageview.d.ts",
+      "import": "./dist/pageview.js",
+      "default": "./dist/pageview.umd.js"
+    },
+    "./style": "./dist/waline.css",
+    "./meta": "./dist/waline-meta.css",
+    "./waline.css": "./dist/waline.css",
+    "./waline-meta.css": "./dist/waline-meta.css",
     "./package.json": "./package.json"
   },
-  "main": "./dist/shim.js",
-  "browser": "./dist/legacy.js",
-  "types": "./dist/shim.d.ts",
+  "main": "./dist/slim.js",
+  "module": "./dist/slim.js",
+  "browser": "./dist/waline.umd.js",
+  "types": "./dist/slim.d.ts",
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "scripts": {
-    "build": "npm run rollup && npm run style",
+    "build": "pnpm rollup && pnpm style",
     "clean": "rimraf ./dist",
-    "lint": "eslint --ext .ts,.vue .",
-    "prepublish": "npm run clean && npm run build",
-    "rollup": "rollup -c ./scripts/rollup.config.js",
-    "style": "sass ./src/styles/index.scss ./dist/waline.css --style=compressed"
+    "dev": "vite",
+    "prepublishOnly": "pnpm clean && pnpm build",
+    "rollup": "rollup -c rollup.config.ts --configPlugin esbuild",
+    "style": "pnpm style:main && pnpm style:meta",
+    "style:main": "sass ./src/styles/index.scss ./dist/waline.css --style=compressed",
+    "style:meta": "sass ./src/styles/meta.scss ./dist/waline-meta.css --style=compressed"
   },
   "browserslist": {
     "production": [
       ">0.5%",
+      "maintained node versions",
       "not dead",
       "not ie 11",
       "not op_mini all",
@@ -53,16 +82,27 @@
     ]
   },
   "dependencies": {
-    "autosize": "5.0.1",
-    "hanabi": "0.4.0",
-    "marked": "4.0.14",
-    "vue": "3.2.33"
+    "@vueuse/core": "^12.7.0",
+    "@waline/api": "workspace:*",
+    "autosize": "^6.0.1",
+    "marked": "^15.0.7",
+    "marked-highlight": "^2.2.1",
+    "recaptcha-v3": "^1.11.3",
+    "vue": "^3.5.13"
   },
   "devDependencies": {
-    "@types/autosize": "4.0.1",
-    "@types/marked": "4.0.3"
+    "@babel/core": "7.26.9",
+    "@babel/preset-env": "7.26.9",
+    "@giphy/js-types": "5.1.0",
+    "@types/autosize": "4.0.3",
+    "@vitejs/plugin-vue": "5.2.1",
+    "user-agent-data-types": "0.4.2",
+    "vite": "6.1.1"
   },
   "engines": {
-    "node": ">=12.20.0"
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "provenance": true
   }
 }

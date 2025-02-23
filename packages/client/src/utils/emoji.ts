@@ -1,21 +1,27 @@
-import { Store, useStore } from '../composables/store';
-import { removeEndingSplash } from './path';
+import { useStorage } from '@vueuse/core';
 
-import type { EmojiConfig } from './config';
-import type { WalineEmojiInfo } from '../typings';
+import type { WalineEmojiConfig } from './config.js';
+import { removeEndingSplash } from './path.js';
+import { isString } from './type.js';
+import type { WalineEmojiInfo } from '../typings/index.js';
 
-let store: Store;
+const EMOJI_STORE_KEY = 'WALINE_EMOJI';
 
-const hasVersion = (url: string): boolean =>
+const emojiStore = useStorage<Record<string, WalineEmojiInfo | undefined>>(
+  EMOJI_STORE_KEY,
+  {},
+);
+
+const checkVersionAnnotation = (url: string): boolean =>
   Boolean(/@[0-9]+\.[0-9]+\.[0-9]+/.test(url));
 
 const fetchEmoji = (link: string): Promise<WalineEmojiInfo> => {
-  if (!store) store = useStore('WALINE_EMOJI');
+  const containsVersion = checkVersionAnnotation(link);
 
-  const result = hasVersion(link);
+  // if the link contains version annotation, check if it's in the cache store
+  if (containsVersion) {
+    const info = emojiStore.value[link];
 
-  if (result) {
-    const info = store.get<WalineEmojiInfo>(link);
     if (info) return Promise.resolve(info);
   }
 
@@ -27,7 +33,8 @@ const fetchEmoji = (link: string): Promise<WalineEmojiInfo> => {
         ...emojiInfo,
       };
 
-      if (result) store.set(link, info);
+      // cache the emoji info if the link contains version annotation
+      if (containsVersion) emojiStore.value[link] = info;
 
       return info;
     });
@@ -36,36 +43,38 @@ const fetchEmoji = (link: string): Promise<WalineEmojiInfo> => {
 const getLink = (name: string, folder = '', prefix = '', type = ''): string =>
   `${folder ? `${folder}/` : ''}${prefix}${name}${type ? `.${type}` : ''}`;
 
-export const getEmojis = (
-  emojis: (string | WalineEmojiInfo)[]
-): Promise<EmojiConfig> =>
+export const getEmojisInfo = (
+  emojis: (string | WalineEmojiInfo)[] | null,
+): Promise<WalineEmojiConfig> =>
   Promise.all(
-    emojis.map((emoji) =>
-      typeof emoji === 'string'
-        ? fetchEmoji(removeEndingSplash(emoji))
-        : Promise.resolve(emoji)
-    )
+    emojis
+      ? emojis.map((emoji) =>
+          isString(emoji)
+            ? fetchEmoji(removeEndingSplash(emoji))
+            : Promise.resolve(emoji),
+        )
+      : [],
   ).then((emojiInfos) => {
-    const emojiConfig: EmojiConfig = {
+    const emojisConfig: WalineEmojiConfig = {
       tabs: [],
       map: {},
     };
 
     emojiInfos.forEach((emojiInfo) => {
-      const { name, folder, icon, prefix, type, items } = emojiInfo;
+      const { name, folder, icon, prefix = '', type, items } = emojiInfo;
 
-      emojiConfig.tabs.push({
+      emojisConfig.tabs.push({
         name,
         icon: getLink(icon, folder, prefix, type),
         items: items.map((item) => {
-          const key = `${prefix || ''}${item}`;
+          const key = `${prefix}${item}`;
 
-          emojiConfig.map[key] = getLink(item, folder, prefix, type);
+          emojisConfig.map[key] = getLink(item, folder, prefix, type);
 
           return key;
         }),
       });
     });
 
-    return emojiConfig;
+    return emojisConfig;
   });

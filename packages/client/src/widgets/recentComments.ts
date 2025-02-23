@@ -1,15 +1,54 @@
-import { fetchRecentComment, getRoot, getUserInfo } from '../utils';
+import type { RecentCommentData } from '@waline/api';
+import { getRecentComment } from '@waline/api';
 
-import type { WalineComment } from '../typings';
+import { useUserInfo } from '../composables/index.js';
+import { getRoot } from '../utils/index.js';
 
-export interface RecentCommentsOptions {
+export interface WalineRecentCommentsOptions {
+  /**
+   * Waline 服务端地址
+   *
+   * Waline serverURL
+   */
   serverURL: string;
+
+  /**
+   * 获取最新评论的数量
+   *
+   * fetch number of latest comments
+   */
   count: number;
+
+  /**
+   * 需要挂载的元素
+   *
+   * Element to be mounted
+   */
   el?: string | HTMLElement;
+
+  /**
+   * 错误提示消息所使用的语言
+   *
+   * Language of error message
+   *
+   * @default navigator.language
+   */
+  lang?: string;
 }
 
-export interface RecentCommentsResult {
-  comments: WalineComment[];
+export interface WalineRecentCommentsResult {
+  /**
+   * 评论数据
+   *
+   * Comment Data
+   */
+  comments: RecentCommentData[];
+
+  /**
+   * 取消挂载挂件
+   *
+   * Umount widget
+   */
   destroy: () => void;
 }
 
@@ -17,21 +56,24 @@ export const RecentComments = ({
   el,
   serverURL,
   count,
-}: RecentCommentsOptions): Promise<RecentCommentsResult> => {
+  lang = navigator.language,
+}: WalineRecentCommentsOptions): Promise<WalineRecentCommentsResult> => {
+  const userInfo = useUserInfo();
   const root = getRoot(el);
   const controller = new AbortController();
 
-  return fetchRecentComment({
+  return getRecentComment({
     serverURL,
     count,
+    lang,
     signal: controller.signal,
-    token: getUserInfo()?.token,
+    token: userInfo.value.token,
   }).then((comments) => {
     if (root && comments.length) {
       root.innerHTML = `<ul class="wl-recent-list">${comments
         .map(
           (comment) =>
-            `<li class="wl-recent-item"><a href="${comment.url}">${comment.nick}</a>：${comment.comment}</li>`
+            `<li class="wl-recent-item"><a href="${comment.url}">${comment.nick}</a>：${comment.comment}</li>`,
         )
         .join('')}</ul>`;
 

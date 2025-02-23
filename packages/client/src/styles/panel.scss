@@ -1,5 +1,3 @@
-@use 'emoji';
-
 .wl-comment {
   position: relative;
   display: flex;
@@ -8,8 +6,8 @@
 
 .wl-close {
   position: absolute;
+  inset-inline-end: -4px;
   top: -4px;
-  right: -4px;
 
   padding: 0;
   border: none;
@@ -29,8 +27,8 @@
 
 .wl-logout-btn {
   position: absolute;
+  inset-inline-end: -10px;
   top: -10px;
-  right: -10px;
 
   padding: 3px;
   border: none;
@@ -80,7 +78,7 @@
   border: var(--waline-border);
   border-radius: 0.75em;
 
-  background: var(--waline-bgcolor);
+  background: var(--waline-bg-color);
   box-shadow: var(--waline-box-shadow);
 }
 
@@ -111,14 +109,14 @@
   input {
     flex: 1;
 
+    resize: none;
+
     width: 0;
     padding: 0.5em;
 
     background: transparent;
 
     font-size: 0.625em;
-
-    resize: none;
   }
 }
 
@@ -154,6 +152,22 @@
   }
 }
 
+.wl-editor {
+  position: relative;
+
+  resize: vertical;
+
+  box-sizing: border-box;
+  width: calc(100% - 1em);
+  min-height: 8.75em;
+  margin: 0.75em 0.5em;
+  border-radius: 0.5em;
+
+  background: transparent;
+
+  font-size: 0.875em;
+}
+
 .wl-editor,
 .wl-input {
   max-width: 100%;
@@ -165,23 +179,8 @@
   transition: all 0.25s ease;
 
   &:focus {
-    background: var(--waline-bgcolor-light);
+    background: var(--waline-bg-color-light);
   }
-}
-
-.wl-editor {
-  position: relative;
-
-  width: calc(100% - 1em);
-  min-height: 8.75em;
-  margin: 0.75em 0.5em;
-  border-radius: 0.5em;
-
-  background: transparent;
-
-  font-size: 0.875em;
-
-  resize: vertical;
 }
 
 .wl-preview {
@@ -196,9 +195,6 @@
   .wl-content {
     min-height: 1.25em;
     padding: 0.25em;
-    border: var(--waline-border);
-    border-radius: 0.25em;
-
     word-break: break-word;
     hyphens: auto;
 
@@ -247,7 +243,7 @@
     color: var(--waline-theme-color);
   }
 
-  &.actived {
+  &.active {
     color: var(--waline-active-color);
   }
 }
@@ -280,7 +276,7 @@
   }
 
   button {
-    margin-left: 0.75em;
+    margin-inline-start: 0.75em;
 
     svg {
       display: block;
@@ -289,5 +285,3 @@
     }
   }
 }
-
-@include emoji.emoji;

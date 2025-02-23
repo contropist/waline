@@ -1,11 +1,8 @@
-import {
-  errorHandler,
-  fetchPageviews,
-  getQuery,
-  updatePageviews,
-} from './utils';
+import type { GetArticleCounterResponse } from '@waline/api';
+import { getPageview, updatePageview } from '@waline/api';
 
-import type { WalineAbort } from './typings';
+import type { WalineAbort } from './typings/index.js';
+import { errorHandler, getQuery, getServerURL } from './utils/index.js';
 
 export interface WalinePageviewCountOptions {
   /**
@@ -41,14 +38,29 @@ export interface WalinePageviewCountOptions {
    * @default true
    */
   update?: boolean;
+
+  /**
+   * 错误提示消息所使用的语言
+   *
+   * Language of error message
+   *
+   * @default navigator.language
+   */
+  lang?: string;
 }
 
 const renderVisitorCount = (
-  counts: number[],
-  countElements: HTMLElement[]
+  counts: GetArticleCounterResponse,
+  countElements: HTMLElement[],
 ): void => {
   countElements.forEach((element, index) => {
-    element.innerText = counts[index].toString();
+    const count = counts[index].time;
+
+    if (typeof count !== 'number') {
+      return;
+    }
+
+    element.innerText = count.toString();
   });
 };
 
@@ -57,12 +69,13 @@ export const pageviewCount = ({
   path = window.location.pathname,
   selector = '.waline-pageview-count',
   update = true,
+  lang = navigator.language,
 }: WalinePageviewCountOptions): WalineAbort => {
   const controller = new AbortController();
 
   const elements = Array.from(
-    // visitor selectors
-    document.querySelectorAll<HTMLElement>(selector)
+    // pageview selectors
+    document.querySelectorAll<HTMLElement>(selector),
   );
 
   const filter = (element: HTMLElement): boolean => {
@@ -72,9 +85,10 @@ export const pageviewCount = ({
   };
 
   const fetch = (elements: HTMLElement[]): Promise<void> =>
-    fetchPageviews({
-      serverURL,
-      paths: elements.map((element) => getQuery(element) || path),
+    getPageview({
+      serverURL: getServerURL(serverURL),
+      paths: elements.map((element) => getQuery(element) ?? path),
+      lang,
       signal: controller.signal,
     })
       .then((counts) => renderVisitorCount(counts, elements))
@@ -85,12 +99,11 @@ export const pageviewCount = ({
     const normalElements = elements.filter((element) => !filter(element));
     const elementsNeedstoBeFetched = elements.filter(filter);
 
-    void updatePageviews({ serverURL, path }).then((count) =>
-      renderVisitorCount(
-        new Array<number>(normalElements.length).fill(count),
-        normalElements
-      )
-    );
+    void updatePageview({
+      serverURL: getServerURL(serverURL),
+      path,
+      lang,
+    }).then((counts) => renderVisitorCount(counts, normalElements));
 
     // if we should fetch count of other pages
     if (elementsNeedstoBeFetched.length) {

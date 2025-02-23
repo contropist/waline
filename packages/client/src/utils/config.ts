@@ -1,99 +1,122 @@
+import { decodePath, isLinkHttp, removeEndingSplash } from './path.js';
 import {
-  defaultLang,
+  DEFAULT_EMOJI,
+  DEFAULT_REACTION,
+  defaultHighlighter,
+  defaultTeXRenderer,
   defaultUploadImage,
-  defaultTexRenderer,
+  getDefaultSearchOptions,
+  getLang,
+  getLocale,
   getMeta,
-  locales,
-} from '../config';
-
-import { decodePath, isLinkHttp, removeEndingSplash } from './path';
-import { getEmojis } from './emoji';
-
+} from '../config/index.js';
 import type {
   WalineEmojiInfo,
   WalineEmojiMaps,
+  WalineEmojiPresets,
+  WalineHighlighter,
+  WalineImageUploader,
   WalineLocale,
   WalineProps,
-} from '../typings';
-import hanabi from 'hanabi';
+  WalineSearchOptions,
+  WalineTeXRenderer,
+} from '../typings/index.js';
 
-export interface EmojiConfig {
+export interface WalineEmojiConfig {
   tabs: Pick<WalineEmojiInfo, 'name' | 'icon' | 'items'>[];
   map: WalineEmojiMaps;
 }
 
-export interface Config
+export interface WalineConfig
   extends Required<
-      Pick<
-        WalineProps,
-        | 'path'
-        | 'lang'
-        | 'meta'
-        | 'pageSize'
-        | 'requiredMeta'
-        | 'imageUploader'
-        | 'highlighter'
-        | 'texRenderer'
-        | 'copyright'
-        | 'login'
-      >
-    >,
-    Pick<WalineProps, 'dark' | 'serverURL'> {
+    Omit<
+      WalineProps,
+      | 'emoji'
+      | 'imageUploader'
+      | 'highlighter'
+      | 'texRenderer'
+      | 'wordLimit'
+      | 'reaction'
+      | 'search'
+    >
+  > {
   locale: WalineLocale;
   wordLimit: [number, number] | false;
-  emoji: Promise<EmojiConfig>;
+  emoji: (WalineEmojiInfo | WalineEmojiPresets)[] | null;
+  highlighter: WalineHighlighter | null;
+  imageUploader: WalineImageUploader | null;
+  texRenderer: WalineTeXRenderer | null;
+  search: WalineSearchOptions | null;
+  reaction: string[] | null;
 }
 
-const getServerURL = (serverURL: string): string => {
+export const getServerURL = (serverURL: string): string => {
   const result = removeEndingSplash(serverURL);
 
   return isLinkHttp(result) ? result : `https://${result}`;
 };
 
+const getWordLimit = (
+  wordLimit: WalineProps['wordLimit'],
+): [number, number] | false =>
+  Array.isArray(wordLimit) ? wordLimit : wordLimit ? [0, wordLimit] : false;
+
 const fallback = <T = unknown>(
-  value: T | false | undefined,
-  fallback: T
-): T | false =>
-  typeof value === 'function' ? value : value === false ? false : fallback;
+  value: T | boolean | undefined,
+  fallback: T,
+): T | null =>
+  value == undefined || value === true
+    ? fallback
+    : value === false
+      ? null
+      : value;
 
 export const getConfig = ({
   serverURL,
 
   path = location.pathname,
-  lang = defaultLang,
+  lang = typeof navigator === 'undefined' ? 'en-US' : navigator.language,
   locale,
-  emoji = ['https://cdn.jsdelivr.net/gh/walinejs/emojis@1.0.0/weibo'],
   meta = ['nick', 'mail', 'link'],
   requiredMeta = [],
+  dark = false,
   pageSize = 10,
   wordLimit,
+  noCopyright = false,
+  login = 'enable',
+  recaptchaV3Key = '',
+  turnstileKey = '',
+  commentSorting = 'latest',
+  emoji = DEFAULT_EMOJI,
   imageUploader,
   highlighter,
   texRenderer,
-  copyright = true,
-  login = 'enable',
+  search,
+  reaction,
   ...more
-}: WalineProps): Config => ({
+}: WalineProps): WalineConfig => ({
   serverURL: getServerURL(serverURL),
   path: decodePath(path),
-  lang,
+  lang: getLang(lang),
   locale: {
-    ...(locales[lang] || locales[defaultLang]),
+    ...getLocale(getLang(lang)),
     ...(typeof locale === 'object' ? locale : {}),
-  },
-  emoji: getEmojis(emoji),
-  wordLimit: Array.isArray(wordLimit)
-    ? wordLimit
-    : wordLimit
-    ? [0, wordLimit]
-    : false,
+  } as WalineLocale,
+  wordLimit: getWordLimit(wordLimit),
   meta: getMeta(meta),
   requiredMeta: getMeta(requiredMeta),
+  dark,
   pageSize,
+  commentSorting,
   login,
-  imageUploader: fallback(imageUploader, defaultUploadImage),
-  highlighter: fallback(highlighter, hanabi),
-  texRenderer: fallback(texRenderer, defaultTexRenderer),
-  copyright,
+  noCopyright,
+  recaptchaV3Key,
+  turnstileKey,
   ...more,
+  reaction: fallback(reaction, DEFAULT_REACTION),
+  imageUploader: fallback(imageUploader, defaultUploadImage),
+  highlighter: fallback(highlighter, defaultHighlighter),
+  texRenderer: fallback(texRenderer, defaultTeXRenderer),
+  emoji: fallback(emoji, DEFAULT_EMOJI),
+  search: fallback(search, getDefaultSearchOptions(lang)),
 });
